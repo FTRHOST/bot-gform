@@ -20,25 +20,36 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # CONFIGURATION
-LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSecQJHZWuwk6ogbXeSypBVhJ5uZIZuAMS-kt7hdAldNYd-xDA/viewform?usp=dialog'
-RESPONSE_COUNT = 30 # Jumlah total responden yang diinginkan
-THREADS_MAX = 3    # Jumlah browser yang berjalan simultan (jangan terlalu banyak agar tidak berat)
+LINK = 'https://docs.google.com/forms/d/1SsQ_ta2Fmiu0lt0WNxDZoef-2_KeH4cMFOeQ4KoHgVg/preview'
+RESPONSE_COUNT = 3 # Jumlah total responden yang diinginkan
+THREADS_MAX = 3    # Jumlah browser yang berjalan simultan
 
-# REALISTIC INDONESIAN DATA
-NAMES = [
-    "Ahmad Fauzi", "Siti Aminah", "Budi Santoso", "Dewi Lestari", "Rizky Ramadhan",
-    "Putri Handayani", "Aditya Wijaya", "Lani Nuraini", "Hendra Saputra", "Maya Sari",
-    "Fajar Nugroho", "Anisa Rahmawati", "Bambang Hermawan", "Ratna Dwi", "Eko Prasetyo",
-    "Dian Safitri", "Agus Setiawan", "Rina Marlina", "Taufik Hidayat", "Indah Permata",
-    "Guntur Pratama", "Siska Amelia", "Dimas Anggara", "Novianti Putri", "Reza Alfian",
-    "Linda Wahyuni", "Zulham Syah", "Mega Utami", "Aris Munandar", "Yulia Fitri",
-    "Muhammad Ihsan", "Nurul Hidayah", "Bayu Segara", "Fitriani Handayani", "Wahyu Hidayat"
+# REALISTIC INDONESIAN DATA (Expanded)
+FIRST_NAMES_MALE = [
+    "Ahmad", "Budi", "Rizky", "Aditya", "Hendra", "Fajar", "Bambang", "Agus", "Taufik", "Guntur",
+    "Dimas", "Reza", "Zulham", "Aris", "Muhammad", "Bayu", "Wahyu", "Eko", "Andi", "Dedi",
+    "Fauzi", "Ihsan", "Pratama", "Setiawan", "Hidayat", "Saputra", "Nugroho", "Ramadhan", "Wijaya",
+    "Alfian", "Munandar", "Segara", "Hermawan", "Prasetyo", "Santoso"
+]
+
+FIRST_NAMES_FEMALE = [
+    "Siti", "Dewi", "Putri", "Lani", "Maya", "Anisa", "Ratna", "Dian", "Rina", "Indah",
+    "Siska", "Novianti", "Linda", "Mega", "Yulia", "Nurul", "Fitriani", "Sri", "Lestari", "Aminah",
+    "Nuraini", "Rahmawati", "Marlina", "Permata", "Amelia", "Wahyuni", "Utami", "Fitri", "Hidayah",
+    "Handayani", "Safitri", "Sari", "Kusuma", "Aulia"
+]
+
+LAST_NAMES = [
+    "Saputra", "Pratama", "Hidayat", "Setiawan", "Kusuma", "Wijaya", "Santoso", "Nugroho", "Wahyuni",
+    "Lestari", "Sari", "Utami", "Hidayah", "Ramadhan", "Alfian", "Munandar", "Syah", "Putri",
+    "Prasetyo", "Hermawan", "Gunawan", "Subagyo", "Wicaksono", "Purnomo", "Sutrisno", "Budiman",
+    "Hartono", "Susanto", "Mulyono", "Sudirman"
 ]
 
 CITIES = [
     "Salatiga", "Semarang", "Boyolali", "Solo", "Magelang", "Ambarawa", "Ungaran",
     "Kendal", "Demak", "Grobogan", "Sragen", "Karanganyar", "Klaten", "Sukoharjo",
-    "Purwodadi", "Temanggung", "Wonosobo"
+    "Purwodadi", "Temanggung", "Wonosobo", "Jepara", "Kudus", "Pati", "Rembang", "Blora"
 ]
 
 PROGRAMS = [
@@ -50,10 +61,11 @@ PROGRAMS = [
 ]
 
 # KONSEP QUANTUM UNCERTAINTY (Probabilitas Jawaban)
-# Menggunakan distribusi bobot agar hasil tidak flat/palsu.
-# Mayoritas di 3, 4, 5 (Netral, Setuju, Sangat Setuju), tapi ada 'noise' di 1-2.
 LIKERT_WEIGHTS = [2, 8, 25, 40, 25] # Persentase: [STS, TS, N, S, SS]
 
+# Track used names to ensure uniqueness
+used_names = set()
+names_lock = threading.Lock()
 count = 0
 count_lock = threading.Lock()
 
@@ -62,35 +74,50 @@ firefox_options.add_argument("--headless")
 firefox_options.add_argument("--incognito")
 
 def get_weighted_choice():
-    # Mengembalikan index 0-4 berdasarkan bobot quantum
     return random.choices([0, 1, 2, 3, 4], weights=LIKERT_WEIGHTS)[0]
+
+def generate_unique_name():
+    global used_names
+    with names_lock:
+        for _ in range(1000): # Attempt to find a unique name
+            is_female = random.choice([True, False])
+            first = random.choice(FIRST_NAMES_FEMALE if is_female else FIRST_NAMES_MALE)
+            last = random.choice(LAST_NAMES)
+            full_name = f"{first} {last}"
+            
+            if full_name not in used_names:
+                used_names.add(full_name)
+                return full_name, is_female
+        
+        fallback_name = f"Responden {random.randint(1000, 9999)}"
+        return fallback_name, random.choice([True, False])
 
 def fillForm():
     global count
     driver = None
+    resp_id = 0
     try:
-        # Generate Identity
-        full_name = random.choice(NAMES)
+        # Generate Unique Identity
+        full_name, is_female = generate_unique_name()
         age = str(random.randint(18, 23))
         city = random.choice(CITIES)
         program = random.choice(PROGRAMS)
-        gender_idx = 1 if any(x in full_name.upper() for x in ["SITI", "PUTRI", "MAYA", "ANI", "RINA", "LINDA"]) else 0
+        gender_idx = 1 if is_female else 0
         
         driver = webdriver.Firefox(options=firefox_options)
         driver.set_page_load_timeout(45)
         
         with count_lock:
-            resp_id = count + 1
             count += 1
+            resp_id = count
         
         logger.info(f"Resp {resp_id} - Memulai sesi: {full_name} ({city})")
         driver.get(LINK)
         
         current_page = 1
-        while current_page <= 6: # Antisipasi multi-page
-            time.sleep(random.uniform(2, 4)) # Jeda manusiawi
+        while current_page <= 6:
+            time.sleep(random.uniform(2, 4))
             
-            # Cari semua pertanyaan di halaman ini
             items = driver.find_elements(By.CSS_SELECTOR, 'div[role="listitem"], .Qr7Oae, .geS5v')
             
             if items:
@@ -100,7 +127,6 @@ def fillForm():
                     inputs = item.find_elements(By.CSS_SELECTOR, 'input[type="text"], textarea')
                     choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"]')
                     
-                    # 1. INPUT TEXT (Bagian Identitas)
                     if inputs:
                         val = ""
                         if "NAMA" in text: val = full_name
@@ -113,33 +139,31 @@ def fillForm():
                             inputs[0].send_keys(val)
                             time.sleep(random.uniform(0.5, 1.2))
                     
-                    # 2. PILIHAN GANDA
                     elif choices:
                         label = text.split('\n')[0]
                         target_idx = -1
                         
-                        # Mapping Identitas Pilihan Ganda
                         if "JENIS KELAMIN" in label:
                             target_idx = gender_idx
                         elif "SEMESTER" in label:
-                            target_idx = random.choices([0,1,2,3,4], weights=[10, 30, 40, 15, 5])[0]
+                            target_idx = random.choices([0,1,2,3,4,5], weights=[5, 25, 40, 20, 5, 5])[0]
+                            if target_idx >= len(choices): target_idx = len(choices) - 1
                         elif "JARAK TEMPUH" in label:
                             target_idx = random.randint(0, len(choices)-1)
                         elif "UANG SAKU" in label:
                             target_idx = random.randint(0, len(choices)-1)
                         elif "STATUS" in label:
-                            target_idx = random.choices([0, 1], weights=[80, 20])[0] # 80% santri biasa
+                            target_idx = random.choices([0, 1], weights=[80, 20])[0]
+                            if target_idx >= len(choices): target_idx = len(choices) - 1
                         elif "LAMA MENYANTRI" in label:
                             target_idx = random.randint(0, len(choices)-1)
                         else:
-                            # KUANTUM UNCERTAINTY untuk Kuesioner (Likert 1-5)
                             target_idx = get_weighted_choice()
                         
                         if target_idx != -1 and target_idx < len(choices):
                             driver.execute_script("arguments[0].click();", choices[target_idx])
                             time.sleep(random.uniform(0.3, 0.8))
 
-            # CARI TOMBOL NAVIGASI
             buttons = driver.find_elements(By.CSS_SELECTOR, 'div[role="button"]')
             next_btn = None
             submit_btn = None
@@ -149,7 +173,6 @@ def fillForm():
                 elif "kirim" in b_text or "submit" in b_text: submit_btn = b
             
             if submit_btn:
-                # Jangan klik submit jika masih ada tombol 'Berikutnya' (Double check)
                 if not next_btn:
                     driver.execute_script("arguments[0].click();", submit_btn)
                     logger.info(f"Resp {resp_id} - FORM BERHASIL DISUBMIT!")
@@ -179,7 +202,7 @@ def run():
         t = threading.Thread(target=fillForm)
         t.start()
         threads.append(t)
-        time.sleep(random.uniform(3, 7)) # Staggering start
+        time.sleep(random.uniform(3, 7))
 
     for t in threads:
         t.join()
