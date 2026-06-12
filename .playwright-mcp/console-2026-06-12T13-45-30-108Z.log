@@ -10,3 +10,12 @@
 [   77247ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ filesystem:https://docs.google.com/persistent/docs/fonts/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammW.woff2:0
 [   77247ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ filesystem:https://docs.google.com/persistent/docs/fonts/KFOKCnqEu92Fr1Mu53ZEC9_Vu3r1gIhOszmOClHrs6ljXfMMLoHQiAo.woff2:0
 [   77247ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ filesystem:https://docs.google.com/persistent/docs/fonts/KFOKCnqEu92Fr1Mu53ZEC9_Vu3r1gIhOszmOClHrs6ljXfMMLmbXiAo.woff2:0
+[ 3678631ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3681298ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3682758ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3685802ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3687253ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3690312ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3691766ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 3694813ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/naLogImpressions:0
+[ 4535850ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ssl.gstatic.com/docs/common/cleardot.gif?zx=k7878bvcfutu:0

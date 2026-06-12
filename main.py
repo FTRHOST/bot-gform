@@ -3,211 +3,187 @@ import threading
 import math
 import logging
 import traceback
-from flask import Flask, request, render_template
 from selenium import webdriver
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.firefox.service import Service
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
-import json
 import sys
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
-count = 106
-count_lock = threading.Lock() # Added lock for thread safety
-ml = False
-tf = False
-val = 1
+# CONFIGURATION
+LINK = 'https://docs.google.com/forms/d/e/1FAIpQLSecQJHZWuwk6ogbXeSypBVhJ5uZIZuAMS-kt7hdAldNYd-xDA/viewform?usp=dialog'
+RESPONSE_COUNT = 30 # Jumlah total responden yang diinginkan
+THREADS_MAX = 3    # Jumlah browser yang berjalan simultan (jangan terlalu banyak agar tidak berat)
+
+# REALISTIC INDONESIAN DATA
+NAMES = [
+    "Ahmad Fauzi", "Siti Aminah", "Budi Santoso", "Dewi Lestari", "Rizky Ramadhan",
+    "Putri Handayani", "Aditya Wijaya", "Lani Nuraini", "Hendra Saputra", "Maya Sari",
+    "Fajar Nugroho", "Anisa Rahmawati", "Bambang Hermawan", "Ratna Dwi", "Eko Prasetyo",
+    "Dian Safitri", "Agus Setiawan", "Rina Marlina", "Taufik Hidayat", "Indah Permata",
+    "Guntur Pratama", "Siska Amelia", "Dimas Anggara", "Novianti Putri", "Reza Alfian",
+    "Linda Wahyuni", "Zulham Syah", "Mega Utami", "Aris Munandar", "Yulia Fitri",
+    "Muhammad Ihsan", "Nurul Hidayah", "Bayu Segara", "Fitriani Handayani", "Wahyu Hidayat"
+]
+
+CITIES = [
+    "Salatiga", "Semarang", "Boyolali", "Solo", "Magelang", "Ambarawa", "Ungaran",
+    "Kendal", "Demak", "Grobogan", "Sragen", "Karanganyar", "Klaten", "Sukoharjo",
+    "Purwodadi", "Temanggung", "Wonosobo"
+]
+
+PROGRAMS = [
+    "Tarbiyah - Pendidikan Agama Islam", "Tarbiyah - Pendidikan Bahasa Arab", "Tarbiyah - Pendidikan Guru MI",
+    "Dakwah - Komunikasi Penyiaran Islam", "Dakwah - Manajemen Dakwah", "Dakwah - Bimbingan Konseling Islam",
+    "Syariah - Hukum Keluarga Islam", "Syariah - Hukum Ekonomi Syariah", "Syariah - Hukum Tata Negara",
+    "FEBI - Perbankan Syariah", "FEBI - Ekonomi Syariah", "FEBI - Akuntansi Syariah",
+    "FUAD - Psikologi Islam", "FUAD - Ilmu Al-Qur'an dan Tafsir"
+]
+
+# KONSEP QUANTUM UNCERTAINTY (Probabilitas Jawaban)
+# Menggunakan distribusi bobot agar hasil tidak flat/palsu.
+# Mayoritas di 3, 4, 5 (Netral, Setuju, Sangat Setuju), tapi ada 'noise' di 1-2.
+LIKERT_WEIGHTS = [2, 8, 25, 40, 25] # Persentase: [STS, TS, N, S, SS]
+
+count = 0
+count_lock = threading.Lock()
+
 firefox_options = FirefoxOptions()
-firefox_options.add_argument("--disable-extensions")
+firefox_options.add_argument("--headless")
 firefox_options.add_argument("--incognito")
-firefox_options.add_argument("--headless") 
-firefox_options.add_argument("--start-maximized")
 
-app = Flask(__name__)
-total = 250 # Increased to accommodate count starting at 106
-percents = [(34.9, 55.6, 4.5, 5), (22.2, 9.5, 12.7, 6, 7.9, 14.3, 25.4, 2), (73, 11.1, 15.9), (76.2, 15.9, 7.9),
-            (11.1, 17.5, 71.4), (12.7, 42.9, 6, 20.6, 5, 9.5, 3.3), (69.8, 23.8, 3, 3.4), (42.9, 46, 11.1),
-            (11.1, 14.3, 74.6), (90.5, 9.5), (92.1, 7.9), (4, 41.3, 49.2, 5.5), (71.4, 4.8, 23.8), (45, 35, 20),
-            (52.4, 47.6), (76.2, 6.4, 9.5, 7.9), (15.9, 76.2, 7.9), (33.3, 50.8, 15.9), (14.3, 57.1, 17.5, 11.1),
-            (74.6, 14.3, 11.1)]
-persons = {}
-response = 10
-link = 'https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/viewform?usp=dialog'
+def get_weighted_choice():
+    # Mengembalikan index 0-4 berdasarkan bobot quantum
+    return random.choices([0, 1, 2, 3, 4], weights=LIKERT_WEIGHTS)[0]
 
-
-def fillForm(link_):
-    global tf
+def fillForm():
     global count
-    global val
-    global ml
     driver = None
     try:
-        logger.info("Starting browser instance...")
-        driver = webdriver.Firefox(options=firefox_options)
-        driver.set_page_load_timeout(30)
+        # Generate Identity
+        full_name = random.choice(NAMES)
+        age = str(random.randint(18, 23))
+        city = random.choice(CITIES)
+        program = random.choice(PROGRAMS)
+        gender_idx = 1 if any(x in full_name.upper() for x in ["SITI", "PUTRI", "MAYA", "ANI", "RINA", "LINDA"]) else 0
         
-        if not ml:
-            val = 1
+        driver = webdriver.Firefox(options=firefox_options)
+        driver.set_page_load_timeout(45)
+        
+        with count_lock:
+            resp_id = count + 1
+            count += 1
+        
+        logger.info(f"Resp {resp_id} - Memulai sesi: {full_name} ({city})")
+        driver.get(LINK)
+        
+        current_page = 1
+        while current_page <= 6: # Antisipasi multi-page
+            time.sleep(random.uniform(2, 4)) # Jeda manusiawi
             
-        for m in range(val):
-            with count_lock:
-                temp = count
-                count += 1
+            # Cari semua pertanyaan di halaman ini
+            items = driver.find_elements(By.CSS_SELECTOR, 'div[role="listitem"], .Qr7Oae, .geS5v')
             
-            logger.info(f"Respondent {temp}: Navigating to form")
-            driver.get(link_)
-            
-            current_question_global_idx = 0
-            max_pages = 5
-            for page_num in range(max_pages):
-                time.sleep(1)
-                # Check if we are on a page with questions or identity
-                wait = WebDriverWait(driver, 10)
-                
-                # Check if there is a "Berikutnya" (Next) or "Submit" (Kirim) button
-                try:
-                    buttons = driver.find_elements(By.CSS_SELECTOR, 'div[role="button"]')
-                    next_btn = None
-                    submit_btn = None
-                    for b in buttons:
-                        btn_text = b.text.lower()
-                        if "berikutnya" in btn_text or "next" in btn_text:
-                            next_btn = b
-                        elif "kirim" in btn_text or "submit" in btn_text:
-                            submit_btn = b
+            if items:
+                logger.info(f"Resp {resp_id} - Mengisi Halaman {current_page} ({len(items)} pertanyaan)")
+                for item in items:
+                    text = item.text.upper()
+                    inputs = item.find_elements(By.CSS_SELECTOR, 'input[type="text"], textarea')
+                    choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"]')
                     
-                    # Find all items that could be questions or headers
-                    items = driver.find_elements(By.CSS_SELECTOR, 'div[role="listitem"], .Qr7Oae, .geS5v')
-                    logger.info(f"Page {page_num + 1}: Found {len(items)} items")
-
-                    if not items and next_btn:
-                        logger.info("No items found, clicking Next/Berikutnya (likely landing page)")
-                        driver.execute_script("arguments[0].click();", next_btn)
-                        continue
-
-                    for item in items:
-                        # Skip if it's just a header (no radio/text)
-                        inputs = item.find_elements(By.CSS_SELECTOR, 'input[type="text"], textarea')
-                        choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"], [role="checkbox"], [jscontroller="EcW08c"]')
+                    # 1. INPUT TEXT (Bagian Identitas)
+                    if inputs:
+                        val = ""
+                        if "NAMA" in text: val = full_name
+                        elif "USIA" in text: val = age
+                        elif "FAKULTAS" in text: val = program
+                        elif "KOTA" in text: val = city
                         
-                        if inputs:
-                            # Identity page usually
-                            label = item.text.upper()
-                            val_to_fill = "Bot User"
-                            if "NAMA" in label:
-                                val_to_fill = random.choice(["Andi", "Budi", "Cici", "Dedi", "Eka"]) + f" {temp}"
-                            elif "KELAS" in label:
-                                val_to_fill = random.choice(["X-A", "XI-B", "XII-C"])
-                            elif "NO HP" in label or "TELEPON" in label:
-                                val_to_fill = "08" + "".join([str(random.randint(0,9)) for _ in range(10)])
-                            
-                            inputs[0].send_keys(val_to_fill)
-                            logger.info(f"Filled text field: {val_to_fill}")
+                        if val:
+                            inputs[0].clear()
+                            inputs[0].send_keys(val)
+                            time.sleep(random.uniform(0.5, 1.2))
+                    
+                    # 2. PILIHAN GANDA
+                    elif choices:
+                        label = text.split('\n')[0]
+                        target_idx = -1
                         
-                        elif choices:
-                            # Question page
-                            try:
-                                if f'{temp}' in persons and current_question_global_idx < len(persons[f'{temp}']):
-                                    num = persons[f'{temp}'][current_question_global_idx]
-                                    if num < len(choices):
-                                        driver.execute_script("arguments[0].click();", choices[num])
-                                        logger.info(f"Q{current_question_global_idx+1}: Clicked option {num}")
-                                    current_question_global_idx += 1
-                                else:
-                                    # Just pick a random one if no data
-                                    rand_choice = random.randint(0, len(choices)-1)
-                                    driver.execute_script("arguments[0].click();", choices[rand_choice])
-                                    current_question_global_idx += 1
-                            except Exception as e:
-                                logger.error(f"Error clicking choice: {e}")
+                        # Mapping Identitas Pilihan Ganda
+                        if "JENIS KELAMIN" in label:
+                            target_idx = gender_idx
+                        elif "SEMESTER" in label:
+                            target_idx = random.choices([0,1,2,3,4], weights=[10, 30, 40, 15, 5])[0]
+                        elif "JARAK TEMPUH" in label:
+                            target_idx = random.randint(0, len(choices)-1)
+                        elif "UANG SAKU" in label:
+                            target_idx = random.randint(0, len(choices)-1)
+                        elif "STATUS" in label:
+                            target_idx = random.choices([0, 1], weights=[80, 20])[0] # 80% santri biasa
+                        elif "LAMA MENYANTRI" in label:
+                            target_idx = random.randint(0, len(choices)-1)
+                        else:
+                            # KUANTUM UNCERTAINTY untuk Kuesioner (Likert 1-5)
+                            target_idx = get_weighted_choice()
+                        
+                        if target_idx != -1 and target_idx < len(choices):
+                            driver.execute_script("arguments[0].click();", choices[target_idx])
+                            time.sleep(random.uniform(0.3, 0.8))
 
-                    if submit_btn:
-                        driver.execute_script("arguments[0].click();", submit_btn)
-                        logger.info(f"Respondent {temp}: Form submitted!")
-                        break
-                    elif next_btn:
-                        driver.execute_script("arguments[0].click();", next_btn)
-                        logger.info(f"Moving to next page...")
-                    else:
-                        logger.warning("No Next or Submit button found. Breaking loop.")
-                        break
-                
-                except Exception as e:
-                    logger.error(f"Error processing page {page_num + 1}: {e}")
-                    break
-
-            time.sleep(2)
+            # CARI TOMBOL NAVIGASI
+            buttons = driver.find_elements(By.CSS_SELECTOR, 'div[role="button"]')
+            next_btn = None
+            submit_btn = None
+            for b in buttons:
+                b_text = b.text.lower()
+                if "berikutnya" in b_text or "next" in b_text: next_btn = b
+                elif "kirim" in b_text or "submit" in b_text: submit_btn = b
             
-        tf = True
-        ml = False
-        val = 1
+            if submit_btn:
+                # Jangan klik submit jika masih ada tombol 'Berikutnya' (Double check)
+                if not next_btn:
+                    driver.execute_script("arguments[0].click();", submit_btn)
+                    logger.info(f"Resp {resp_id} - FORM BERHASIL DISUBMIT!")
+                    break
+                else:
+                    driver.execute_script("arguments[0].click();", next_btn)
+                    current_page += 1
+            elif next_btn:
+                driver.execute_script("arguments[0].click();", next_btn)
+                logger.info(f"Resp {resp_id} - Lanjut ke halaman berikutnya...")
+                current_page += 1
+            else:
+                break
+                
     except Exception as e:
-        logger.error(f"Fatal error in fillForm: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Resp {resp_id} - Error: {e}")
     finally:
         if driver:
             driver.quit()
-            logger.info("Browser closed")
 
-
-def multiRun(key1, key2):
-    global tf
-    global ml
-    global val
-    tf = False
-    count_to_run = int(key2)
-    if count_to_run > 4:
-        ml = True
-        val = math.ceil(count_to_run / 4)
-        count_to_run = 4
-    
+def run():
+    logger.info(f"--- MEMULAI BOT QUANTUM RESPONDEN ({RESPONSE_COUNT} RESPONDEN) ---")
     threads = []
-    for i in range(count_to_run):
-        t = threading.Thread(target=fillForm, args=(key1,))
+    for _ in range(RESPONSE_COUNT):
+        while threading.active_count() > THREADS_MAX:
+            time.sleep(1)
+        t = threading.Thread(target=fillForm)
         t.start()
         threads.append(t)
-        time.sleep(1) # Small delay between starting threads
-    
-    return threads
+        time.sleep(random.uniform(3, 7)) # Staggering start
 
-
-def formFill(key1, key2):
-    try:
-        threads = multiRun(key1, key2)
-        # Wait for all threads to finish instead of busy wait
-        for t in threads:
-            t.join()
-        logger.info(f"All {key2} form fills attempted.")
-    except Exception as e:
-        logger.error(f"Error in formFill: {e}")
-
-
-for n in range(total):
-    persons[f"{n + 1}"] = []
-
-mno = 1
-for question in percents:
-    for option in question:
-        respondent_count = (math.floor(option * 1.5))
-        for ko in range(respondent_count):
-            if f'{mno}' in persons:
-                persons['{}'.format(mno)].append(question.index(option))
-            mno += 1
-    mno = 1
+    for t in threads:
+        t.join()
+    logger.info("--- SEMUA RESPONDEN SELESAI ---")
 
 if __name__ == "__main__":
-    logger.info("Starting Google Forms Bot")
-    formFill(link, response)
+    run()
