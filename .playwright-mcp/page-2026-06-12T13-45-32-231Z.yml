@@ -1,0 +1,56 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - generic [ref=e11]:
+          - heading "TES AKHIR - PROPOSAL OSIS" [level=1] [ref=e13]
+          - generic [ref=e14]:
+            - text: Ini merupakan lembar soal yang wajib dikerjakan oleh Calon Pengurus OSIS (CPO) MA NU 01 Banyuputih. Adanya tes akhir ini bertujuan untuk mengingat kembali materi dasar OSIS yaitu proposal.
+            - generic [ref=e16]: "Soal mencangkup:"
+            - generic [ref=e17]: "- Pengertian dasar"
+            - generic [ref=e18]: "- Format"
+            - generic [ref=e19]: "- Teknis"
+            - generic [ref=e21]: "Output atau hal yang didapat:"
+            - generic [ref=e22]: "- CPO dapat mengetahui apa itu proposal"
+            - generic [ref=e23]: "- CPO paham akan mengatur format yang benar untuk proposal OSIS"
+            - generic [ref=e24]: "- CPO akan dibekali dengan keterampilan dasar Ms. Word dan Ms. Excel"
+            - generic [ref=e26]: "Teknis pengerjaan soal:"
+            - generic [ref=e27]: "- Akan diberikan 15 soal, dengan ketentuan 10 pilihan ganda, 5 essay"
+            - generic [ref=e28]: "- Harap isi data diri yang sesuai"
+            - generic [ref=e29]: "- Silahkan dikerjakan dengan khidmat"
+            - generic [ref=e30]: "- Dikerjakan secara mandiri"
+            - generic [ref=e31]: "- no no buat contek yaah"
+            - generic [ref=e32]: "- Salah tidak apa-apa itu merupakan salah satu bagian proses teman-teman :)"
+            - generic [ref=e34]: "NB: WAJIB DIKERJAKAN UNTUK SELURUH CALON PENGURUS OSIS."
+        - generic [ref=e38]:
+          - link "Login ke Google" [ref=e39] [cursor=pointer]:
+            - /url: https://accounts.google.com/Login?continue=https%3A%2F%2Fdocs.google.com%2Fforms%2Fd%2Fe%2F1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ%2Fviewform%3Ffbzx%3D-4999466803031453077
+          - text: untuk menyimpan progres.
+          - button "Pelajari lebih lanjut" [ref=e40] [cursor=pointer]
+      - list
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - button "Berikutnya" [ref=e44] [cursor=pointer]:
+            - generic [ref=e47]: Berikutnya
+          - button "Kosongkan formulir" [ref=e49] [cursor=pointer]:
+            - generic [ref=e52]: Kosongkan formulir
+        - generic [ref=e53]: Jangan pernah mengirimkan sandi melalui Google Formulir.
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - text: Konten ini tidak dibuat atau didukung oleh Google. -
+        - link "Persyaratan Layanan" [ref=e56] [cursor=pointer]:
+          - /url: https://policies.google.com/terms
+        - text: "-"
+        - link "Kebijakan Privasi" [ref=e57] [cursor=pointer]:
+          - /url: https://policies.google.com/privacy
+        - paragraph [ref=e58]:
+          - text: Apakah formulir ini tampak mencurigakan?
+          - link "Laporkan" [ref=e59] [cursor=pointer]:
+            - /url: https://docs.google.com/forms/d/e/1FAIpQLSfIwKNe3Kw042nSHJr_mu-f6PXQLudiUX2EETBnIHUjsYGodQ/abuse
+      - link "Google Formulir" [ref=e61] [cursor=pointer]:
+        - /url: //www.google.com/forms/about/?utm_source=product&utm_medium=forms_logo&utm_campaign=forms
+        - img "Google" [ref=e62]
+        - text: Formulir
+  - generic [ref=e66]:
+    - button "bantuan dan masukan" [ref=e67] [cursor=pointer]
+    - tooltip [ref=e70]: Bantuan dan masukan
