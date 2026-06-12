@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # CONFIGURATION
-LINK = 'https://docs.google.com/forms/d/1SsQ_ta2Fmiu0lt0WNxDZoef-2_KeH4cMFOeQ4KoHgVg/preview'
+LINK = 'masukan linknya disini'
 RESPONSE_COUNT = 3 # Jumlah total responden yang diinginkan
 THREADS_MAX = 3    # Jumlah browser yang berjalan simultan
 
