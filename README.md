@@ -49,20 +49,51 @@ Pastikan Anda sudah menginstal Python di komputer Anda.
 
 5. Pastikan Anda memiliki browser **Firefox** terinstal.
 
-### Langkah 3: Konfigurasi Bot
+### Langkah 3: Konfigurasi Bot & Mode Pengisian
 
-Buka file `main.py` menggunakan text editor (Notepad++, VS Code, dll) dan sesuaikan bagian ini:
+Buka file `main.py` menggunakan text editor (Notepad++, VS Code, dll) dan sesuaikan bagian tautan form:
 
 ```python
 # Ganti dengan link Google Form Anda
 LINK = 'https://docs.google.com/forms/d/e/PASTE_YOUR_LINK_HERE/viewform'
-
-# Tentukan jumlah responden yang diinginkan
-RESPONSE_COUNT = 30
-
-# Jumlah browser yang berjalan bersamaan (sesuaikan dengan RAM komputer)
-THREADS_MAX = 3
 ```
+
+Bot ini memiliki **2 Mode Pengisian**:
+1. **Mode Random (Acak)**: Mengisi form secara acak menggunakan data buatan yang realistis (sesuai daftar di dalam kode).
+2. **Mode File (CSV / Excel)**: Mengisi form menggunakan data responden asli dari file `.csv` atau `.xlsx` / `.xls` (Excel).
+
+#### Cara Memilih Mode saat Menjalankan Bot:
+Anda dapat memilih mode pengisian dengan beberapa cara:
+- **Input Interaktif**: Cukup ketik `python main.py` di terminal. Bot akan memunculkan menu interaktif untuk memilih mode dan memasukkan nama file data Anda.
+- **Argumen Command Line**:
+  - Untuk langsung menjalankan Mode Random:
+    ```bash
+    python main.py --random
+    ```
+  - Untuk langsung menjalankan Mode File:
+    ```bash
+    python main.py data_dummy.xlsx
+    # atau
+    python main.py data_dummy.csv
+    ```
+
+#### Format File CSV / Excel (Mode 2):
+File data Anda dapat memiliki kolom-kolom berikut (tidak wajib diisi semua):
+- **Nama Lengkap / Nama / Name**: Kolom nama responden.
+- **Usia / Umur / Age**: Usia (misal: `20`).
+- **Jenis Kelamin / Gender**: Pilihan gender (misal: `Pria` atau `Wanita`).
+- **Fakultas / Prodi / Program Studi / Jurusan**: Fakultas dan prodi.
+- **Semester**: Semester saat ini.
+- **Asal Kota / Kabupaten / Kota**: Asal kota.
+- **Jarak / Jarak Tempuh**: Jarak ke pesantren.
+- **Uang Saku / Pengeluaran**: Uang saku per bulan.
+- **Status / Status Saat Ini**: Status kepengurusan/santri biasa.
+- **Lama Menyantri / Lama Tinggal**: Lama tinggal di pesantren.
+- **Q1 s/d Q15 (atau P1 s/d P15 / Pertanyaan 1 s/d 15)**: Jawaban untuk kuesioner skala Likert 1-15. Anda dapat mengisi dengan angka `1` s/d `5` (atau teks pilihan seperti `Sangat Setuju`).
+
+> [!TIP]
+> **Fitur Fallback Pintar**: Jika ada baris data atau kolom kuesioner yang kosong (bernilai kosong/NaN) di file CSV/Excel Anda, bot akan otomatis mengisi bagian yang kosong tersebut menggunakan generator acak realistis (Quantum Uncertainty) agar proses pengisian form tidak terhenti.
+
 
 Anda juga bisa mengatur "Quantum Uncertainty" (bobot jawaban) di bagian:
 
