@@ -20,8 +20,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # CONFIGURATION
-LINK = 'masukan linknya disini'
-RESPONSE_COUNT = 3 # Jumlah total responden yang diinginkan
+LINK = 'https://docs.google.com/forms/d/e/1FAIpQLScs4MvtoMoI2o5xflzU-UbBWogzr0uEksAmWBeFuBlf9pcYPA/viewform?usp=publish-editor'
+RESPONSE_COUNT = 1 # Jumlah total responden yang diinginkan
 THREADS_MAX = 3    # Jumlah browser yang berjalan simultan
 
 # REALISTIC INDONESIAN DATA (Expanded)
@@ -92,8 +92,24 @@ def generate_unique_name():
         fallback_name = f"Responden {random.randint(1000, 9999)}"
         return fallback_name, random.choice([True, False])
 
+def is_empty_value(val):
+    if val is None:
+        return True
+    import math
+    try:
+        if isinstance(val, float) and math.isnan(val):
+            return True
+    except:
+        pass
+    val_str = str(val).strip()
+    if val_str == "" or val_str.lower() == "nan":
+        return True
+    return False
+
 def find_matching_choice_index(choices, target_value):
-    if target_value is None or str(target_value).strip() == "":
+    import difflib
+    
+    if is_empty_value(target_value):
         return -1
     target_str = str(target_value).strip().lower()
     
@@ -108,17 +124,6 @@ def find_matching_choice_index(choices, target_value):
             if target_str == t:
                 return idx
                 
-    # Try substring match if exact match fails
-    for idx, choice in enumerate(choices):
-        text = choice.text or ""
-        val = choice.get_attribute("data-value") or ""
-        aria = choice.get_attribute("aria-label") or ""
-        
-        all_texts = [t.strip().lower() for t in [text, val, aria] if t]
-        for t in all_texts:
-            if target_str in t or t in target_str:
-                return idx
-                
     # Try numeric representation for Likert scales or general index
     try:
         num_val = int(float(target_value))
@@ -131,9 +136,28 @@ def find_matching_choice_index(choices, target_value):
     except ValueError:
         pass
         
+    # Try fuzzy matching using difflib for string similarity (handles typos like 'sanngat setuj')
+    best_idx = -1
+    highest_ratio = 0.0
+    for idx, choice in enumerate(choices):
+        text = choice.text or ""
+        val = choice.get_attribute("data-value") or ""
+        aria = choice.get_attribute("aria-label") or ""
+        
+        all_texts = [t.strip().lower() for t in [text, val, aria] if t]
+        for t in all_texts:
+            ratio = difflib.SequenceMatcher(None, target_str, t).ratio()
+            if ratio > highest_ratio:
+                highest_ratio = ratio
+                best_idx = idx
+                
+    # Use fuzzy match if similarity is high enough (threshold 0.6)
+    if highest_ratio > 0.6:
+        return best_idx
+        
     return -1
 
-def get_value_from_row(row, label_or_text):
+def get_value_from_row(row, label_or_text, likert_idx=None):
     if row is None:
         return None
     # Normalize label_or_text
@@ -200,43 +224,18 @@ def get_value_from_row(row, label_or_text):
             if "LAMA" in c or "MENYANTRI" in c:
                 return row[col]
 
-    # Try Likert Scale question index matching: Q1/P1, Q2/P2, ..., Q15/P15
-    likert_questions = [
-        "Saya berusaha semaksimal mungkin untuk mencapai hasil maksimal dalam kegiatan pesantren",
-        "Saya merasa bertanggung jawab sebagai santri",
-        "Lingkungan dan teman di pesantren membuat saya lebih semangat dalam kegiatan",
-        "Saya ingin meningkatkan kemampuan diri selama di pesantren",
-        "Ibu Nyai memberikan arahan dan teladan yang baik dalam prilaku sehari-hari",
-        "Ibu Nyai sering mengingatkan pentingnya tujuan belajar dan beribadah di pesantren",
-        "Ibu Nyai mendorong santri untuk berpikir dan memahami pelajaran secara mendalam",
-        "Ibu Nyai memberikan nasihat atau bimbingan secara pribadi ketika santri mengalami kesulitan",
-        "Saya mematuhi peraturan yang berlaku di pesantren",
-        "Saya berusaha mengikuti seluruh kegiatan pesantren sesuai jadwal yang ditentukan",
-        "Saya menyelesaikan tugas yang diberikan oleh pengurus atau ustadz dengan baik",
-        "Saya berusaha melaksanakan ibadah wajib secara konsisten",
-        "Saya merasakan ketenangan batin ketika menjalankan ibadah",
-        "Saya berusaha memahami ajaran agama yang diajarkan di pesantren",
-        "Nilai-nilai agama mempengaruhi perilaku saya dalam kehidupan sehari-hari"
-    ]
-    
-    matching_idx = -1
-    for i, q in enumerate(likert_questions):
-        if q.upper().strip() in norm_label or norm_label in q.upper().strip():
-            matching_idx = i + 1
-            break
-            
-    if matching_idx != -1:
+    # Try mapping using likert_idx if provided (e.g. Q1, Q2, ..., Q31 or Q01, Q02, ...)
+    if likert_idx is not None:
         patterns = [
-            f"Q{matching_idx}", f"P{matching_idx}", f"Y{matching_idx}", f"X{matching_idx}",
-            f"PERTANYAAN {matching_idx}", f"PERTANYAAN_{matching_idx}",
-            f"QUESTION {matching_idx}", f"QUESTION_{matching_idx}",
-            f"PIR{matching_idx}", f"K{matching_idx}"
+            f"Q{likert_idx}", f"P{likert_idx}", f"Y{likert_idx}", f"X{likert_idx}",
+            f"Q{likert_idx:02d}", f"P{likert_idx:02d}", f"Y{likert_idx:02d}", f"X{likert_idx:02d}",
+            f"PERTANYAAN {likert_idx}", f"PERTANYAAN_{likert_idx}",
+            f"QUESTION {likert_idx}", f"QUESTION_{likert_idx}",
+            f"K{likert_idx}", f"K{likert_idx:02d}"
         ]
         for col in keys:
             c = str(col).upper().strip()
             if c in patterns:
-                return row[col]
-            if q.upper().strip() in c or c in q.upper().strip():
                 return row[col]
                 
     # Fallback to substring matching on all keys
@@ -249,53 +248,116 @@ def get_value_from_row(row, label_or_text):
 
 def choose_mode():
     import os
-    # Check command-line arguments
+    global LINK
+    
+    # 1. Determine Google Form Link
+    # Check if a URL argument was passed in command line
+    cli_url = None
+    for arg in sys.argv[1:]:
+        if arg.startswith(('http://', 'https://')) and "viewform" in arg:
+            cli_url = arg
+            break
+            
+    if cli_url:
+        LINK = cli_url
+        logger.info(f"Menggunakan Link Google Form dari CLI: {LINK}")
+    else:
+        print("=" * 60)
+        print("                KONFIGURASI LINK GOOGLE FORM")
+        print("=" * 60)
+        while True:
+            try:
+                link_input = input("Masukkan Link Google Form Anda: ").strip()
+                if link_input.startswith(('http://', 'https://')):
+                    LINK = link_input
+                    break
+                print("Link tidak valid! Harus dimulai dengan http:// atau https://")
+            except KeyboardInterrupt:
+                print("\nKeluar...")
+                sys.exit(0)
+                
+    # 2. Choose Mode
+    # Check command-line arguments for mode
+    cli_mode = None
+    file_path = None
+    
     if len(sys.argv) > 1:
-        arg = sys.argv[1]
-        if arg == '--random':
-            return 'random', None
-        elif os.path.exists(arg):
-            return 'file', arg
+        for arg in sys.argv[1:]:
+            if arg == '--random':
+                cli_mode = 'random'
+            elif arg == '--fetch-template':
+                cli_mode = 'fetch_template'
+            elif os.path.exists(arg) and arg != sys.argv[0]:
+                cli_mode = 'file'
+                file_path = arg
+                
+    if cli_mode:
+        if cli_mode == 'random':
+            resp_count = RESPONSE_COUNT
+            print(f"Menggunakan Mode Random dari CLI. Jumlah responden default: {resp_count}")
+            return 'random', None, resp_count
+        elif cli_mode == 'fetch_template':
+            return 'fetch_template', None, 1
         else:
-            logger.error(f"File '{arg}' tidak ditemukan. Menggunakan mode interaktif.")
+            return 'file', file_path, None
             
     print("=" * 60)
     print("               BOT GOOGLE FORM - PILIH MODE")
     print("=" * 60)
     print("1. Mode Random (Mengisi form dengan data acak realistis)")
-    print("2. Mode File (Mengisi form dari data CSV / Excel)")
+    print("2. Mode File Lokal (Mengisi form dari data CSV / Excel Lokal)")
+    print("3. Mode Scan Template (Membuat template CSV otomatis dari Google Form)")
     print("=" * 60)
     
     while True:
         try:
-            choice = input("Pilih mode (1/2): ").strip()
-            if choice in ('1', '2'):
+            choice = input("Pilih mode (1/2/3): ").strip()
+            if choice in ('1', '2', '3'):
                 break
-            print("Pilihan tidak valid. Silakan pilih 1 atau 2.")
+            print("Pilihan tidak valid. Silakan pilih 1, 2, atau 3.")
         except KeyboardInterrupt:
             print("\nKeluar...")
             sys.exit(0)
             
     if choice == '1':
-        return 'random', None
-    else:
         while True:
             try:
-                file_path = input("Masukkan path file CSV/Excel (misal: data.xlsx atau data.csv): ").strip()
-                if not file_path:
-                    continue
-                if os.path.exists(file_path):
-                    return 'file', file_path
-                print(f"File '{file_path}' tidak ditemukan. Silakan masukkan path yang benar.")
+                count_input = input("Masukkan jumlah responden yang diinginkan (angka): ").strip()
+                if count_input.isdigit() and int(count_input) > 0:
+                    resp_count = int(count_input)
+                    break
+                print("Masukkan jumlah yang valid (angka bulat positif).")
             except KeyboardInterrupt:
                 print("\nKeluar...")
                 sys.exit(0)
+        return 'random', None, resp_count
+    elif choice == '2':
+        while True:
+            try:
+                f_path = input("Masukkan path file CSV/Excel lokal (misal: data.xlsx atau data.csv): ").strip()
+                if not f_path:
+                    continue
+                if os.path.exists(f_path):
+                    return 'file', f_path, None
+                print(f"File '{f_path}' tidak ditemukan. Silakan masukkan path yang benar.")
+            except KeyboardInterrupt:
+                print("\nKeluar...")
+                sys.exit(0)
+    else:
+        return 'fetch_template', None, None
 
 def load_data(file_path):
     import pandas as pd
     try:
         if file_path.endswith('.csv'):
-            return pd.read_csv(file_path)
+            # Try comma first
+            df = pd.read_csv(file_path)
+            # If it only has 1 column, it might be separated by semicolon or tab (Indonesian Excel standard)
+            if df.shape[1] <= 1:
+                df_sep = pd.read_csv(file_path, sep=';')
+                if df_sep.shape[1] > df.shape[1]:
+                    df = df_sep
+            return df
         elif file_path.endswith(('.xls', '.xlsx')):
             return pd.read_excel(file_path)
         else:
@@ -313,23 +375,30 @@ def fillForm(row_data=None):
         if row_data is not None:
             # Mode CSV/Excel
             name_val = get_value_from_row(row_data, "NAMA")
-            full_name = str(name_val).strip() if name_val is not None else generate_unique_name()[0]
+            if is_empty_value(name_val):
+                raise ValueError("Kolom/data 'NAMA' tidak ditemukan atau kosong di file CSV/Excel!")
+            full_name = str(name_val).strip()
             
             age_val = get_value_from_row(row_data, "USIA")
-            age = str(age_val).strip() if age_val is not None else str(random.randint(18, 23))
+            if is_empty_value(age_val):
+                raise ValueError("Kolom/data 'USIA' tidak ditemukan atau kosong di file CSV/Excel!")
+            age = str(age_val).strip()
             
             city_val = get_value_from_row(row_data, "KOTA")
-            city = str(city_val).strip() if city_val is not None else random.choice(CITIES)
+            if is_empty_value(city_val):
+                raise ValueError("Kolom/data 'KOTA' tidak ditemukan atau kosong di file CSV/Excel!")
+            city = str(city_val).strip()
             
             program_val = get_value_from_row(row_data, "FAKULTAS")
-            program = str(program_val).strip() if program_val is not None else random.choice(PROGRAMS)
+            if is_empty_value(program_val):
+                raise ValueError("Kolom/data 'FAKULTAS' tidak ditemukan atau kosong di file CSV/Excel!")
+            program = str(program_val).strip()
             
             gender_val = get_value_from_row(row_data, "JENIS KELAMIN")
-            if gender_val is not None:
-                g_str = str(gender_val).strip().lower()
-                is_female = ("wanita" in g_str or "perempuan" in g_str or g_str.startswith("p") or g_str.startswith("f"))
-            else:
-                _, is_female = generate_unique_name()
+            if is_empty_value(gender_val):
+                raise ValueError("Kolom/data 'JENIS KELAMIN' tidak ditemukan atau kosong di file CSV/Excel!")
+            g_str = str(gender_val).strip().lower()
+            is_female = ("wanita" in g_str or "perempuan" in g_str or g_str.startswith("p") or g_str.startswith("f"))
             gender_idx = 1 if is_female else 0
         else:
             # Mode Random
@@ -350,6 +419,7 @@ def fillForm(row_data=None):
         driver.get(LINK)
         
         current_page = 1
+        likert_counter = 0
         while current_page <= 6:
             time.sleep(random.uniform(2, 4))
             
@@ -361,36 +431,64 @@ def fillForm(row_data=None):
                     text = item.text.upper()
                     inputs = item.find_elements(By.CSS_SELECTOR, 'input[type="text"], textarea')
                     choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"]')
+                    label = text.split('\n')[0]
                     
                     if inputs:
                         val = ""
-                        if "NAMA" in text: val = full_name
-                        elif "USIA" in text: val = age
-                        elif "FAKULTAS" in text: val = program
-                        elif "KOTA" in text: val = city
+                        source = "Acak"
+                        if "NAMA" in text:
+                            val = full_name
+                            source = "CSV" if row_data is not None else "Acak"
+                        elif "USIA" in text:
+                            val = age
+                            source = "CSV" if row_data is not None else "Acak"
+                        elif "FAKULTAS" in text:
+                            val = program
+                            source = "CSV" if row_data is not None else "Acak"
+                        elif "KOTA" in text:
+                            val = city
+                            source = "CSV" if row_data is not None else "Acak"
                         elif row_data is not None:
-                            # Check if the field text splits/labels match any key in row
-                            row_val = get_value_from_row(row_data, text.split('\n')[0])
-                            if row_val is not None:
-                                val = str(row_val).strip()
+                            row_val = get_value_from_row(row_data, label)
+                            if is_empty_value(row_val):
+                                raise ValueError(f"Pertanyaan teks '{label}' kosong atau tidak ditemukan di CSV/Excel!")
+                            val = str(row_val).strip()
+                            source = "CSV"
                         
                         if val:
                             inputs[0].clear()
                             inputs[0].send_keys(val)
+                            logger.info(f"Resp {resp_id} - Mengisi teks '{label}' = '{val}' ({source})")
                             time.sleep(random.uniform(0.5, 1.2))
                     
                     elif choices:
-                        label = text.split('\n')[0]
                         target_idx = -1
+                        source = "Acak"
                         
-                        row_val = get_value_from_row(row_data, label) if row_data is not None else None
+                        is_identity = False
+                        for id_keyword in ["JENIS KELAMIN", "SEMESTER", "JARAK TEMPUH", "UANG SAKU", "STATUS", "LAMA MENYANTRI"]:
+                            if id_keyword in label:
+                                is_identity = True
+                                break
                         
-                        if row_val is not None:
+                        if not is_identity:
+                            likert_counter += 1
+                            row_val = get_value_from_row(row_data, label, likert_idx=likert_counter) if row_data is not None else None
+                        else:
+                            row_val = get_value_from_row(row_data, label) if row_data is not None else None
+                        
+                        if row_data is not None:
+                            # Strict validation for CSV/Excel mode
+                            if is_empty_value(row_val):
+                                raise ValueError(f"Data untuk pertanyaan pilihan '{label}' kosong atau tidak ditemukan di CSV/Excel!")
+                            
                             target_idx = find_matching_choice_index(choices, row_val)
                             if target_idx == -1:
-                                logger.warning(f"Resp {resp_id} - Pilihan '{row_val}' tidak ditemukan untuk '{label}'. Menggunakan pilihan acak.")
-                        
-                        if target_idx == -1:
+                                available_options = [c.get_attribute("data-value") or c.text for c in choices]
+                                raise ValueError(f"Nilai '{row_val}' untuk pertanyaan '{label}' tidak cocok dengan opsi apa pun di form! Pilihan tersedia: {available_options}")
+                            source = "CSV"
+                        else:
+                            # Mode Random (original logic)
                             if "JENIS KELAMIN" in label:
                                 target_idx = gender_idx
                             elif "SEMESTER" in label:
@@ -407,8 +505,11 @@ def fillForm(row_data=None):
                                 target_idx = random.randint(0, len(choices)-1)
                             else:
                                 target_idx = get_weighted_choice()
+                                if target_idx >= len(choices): target_idx = len(choices) - 1
                         
                         if target_idx != -1 and target_idx < len(choices):
+                            chosen_option = choices[target_idx].get_attribute("data-value") or choices[target_idx].text or str(target_idx)
+                            logger.info(f"Resp {resp_id} - Memilih '{label}' = '{chosen_option}' ({source})")
                             driver.execute_script("arguments[0].click();", choices[target_idx])
                             time.sleep(random.uniform(0.3, 0.8))
 
@@ -442,14 +543,114 @@ def fillForm(row_data=None):
         if driver:
             driver.quit()
 
+def fetch_template_form():
+    logger.info("--- MEMULAI PROSES SCAN GOOGLE FORM UNTUK MEMBUAT TEMPLATE CSV ---")
+    driver = None
+    headers = []
+    
+    try:
+        driver = webdriver.Firefox(options=firefox_options)
+        driver.set_page_load_timeout(45)
+        
+        logger.info(f"Membuka Google Form: {LINK}")
+        driver.get(LINK)
+        
+        current_page = 1
+        while current_page <= 10:
+            time.sleep(random.uniform(2, 4))
+            
+            # Find all questions on the page
+            items = driver.find_elements(By.CSS_SELECTOR, 'div[role="listitem"], .Qr7Oae, .geS5v')
+            
+            if items:
+                logger.info(f"Scan Halaman {current_page} ({len(items)} pertanyaan ditemukan)")
+                for item in items:
+                    text = item.text
+                    # Extract the question label (first line of text)
+                    label = text.split('\n')[0].strip()
+                    if label and label not in headers:
+                        # Clean up label if it contains required mark (*)
+                        clean_label = label.replace(" *", "").strip()
+                        headers.append(clean_label)
+                        logger.info(f"  [+] Menemukan Pertanyaan: {clean_label}")
+                    
+                    # Fill the question with random/temporary data to proceed to next page
+                    inputs = item.find_elements(By.CSS_SELECTOR, 'input[type="text"], textarea')
+                    choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"]')
+                    
+                    if inputs:
+                        val = "Test Data"
+                        text_upper = text.upper()
+                        if "NAMA" in text_upper: val = "Nama Responden"
+                        elif "USIA" in text_upper: val = "20"
+                        elif "FAKULTAS" in text_upper: val = "Fakultas Dakwah"
+                        elif "KOTA" in text_upper: val = "Salatiga"
+                        
+                        inputs[0].clear()
+                        inputs[0].send_keys(val)
+                    
+                    elif choices:
+                        # Click the first choice to proceed
+                        driver.execute_script("arguments[0].click();", choices[0])
+            
+            # Find buttons
+            buttons = driver.find_elements(By.CSS_SELECTOR, 'div[role="button"]')
+            next_btn = None
+            submit_btn = None
+            for b in buttons:
+                b_text = b.text.lower()
+                if "berikutnya" in b_text or "next" in b_text: next_btn = b
+                elif "kirim" in b_text or "submit" in b_text: submit_btn = b
+            
+            if submit_btn:
+                # We reached the last page! Do NOT click submit!
+                logger.info("Mencapai halaman akhir (tombol Kirim/Submit ditemukan). Scan selesai!")
+                break
+            elif next_btn:
+                # Click Next to go to next page
+                driver.execute_script("arguments[0].click();", next_btn)
+                logger.info(f"Lanjut ke halaman berikutnya...")
+                current_page += 1
+            else:
+                break
+                
+        # Write headers to CSV
+        if headers:
+            import pandas as pd
+            # Create a DataFrame with these headers
+            df = pd.DataFrame(columns=headers)
+            # Add one empty row (filled with None)
+            df.loc[0] = [None] * len(headers)
+            
+            file_name = "template_kuesioner.csv"
+            df.to_csv(file_name, index=False)
+            
+            logger.info("=" * 60)
+            logger.info(f"SUKSES: Template CSV berhasil dibuat!")
+            logger.info(f"File disimpan di: {file_name}")
+            logger.info(f"Total Kolom: {len(headers)}")
+            logger.info("=" * 60)
+        else:
+            logger.error("Gagal mendeteksi pertanyaan di Google Form.")
+            
+    except Exception as e:
+        logger.error(f"Error saat scan form: {e}")
+        traceback.print_exc()
+    finally:
+        if driver:
+            driver.quit()
+
 def run():
     import pandas as pd
     
     # Choose mode and retrieve file path if applicable
-    mode, file_path = choose_mode()
+    mode, file_path, resp_count = choose_mode()
     
+    if mode == 'fetch_template':
+        fetch_template_form()
+        return
+        
     rows_data = None
-    resp_count = RESPONSE_COUNT
     
     if mode == 'file':
         df = load_data(file_path)

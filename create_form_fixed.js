@@ -1,25 +1,26 @@
 function createFullCopyForm() {
-  var form = FormApp.create('Salinan Kuesioner Pondok Pesantren Nurul Asna');
-  
+  var form = FormApp.create('Latihan');
+
   form.setTitle('Pengaruh Gaya Kepemimpinan Ibu Nyai dan Kedisiplinan Terhadap Motivasi Santri dengan Religiusitas sebagai Variabel Moderasi di Pondok Pesantren Nurul Asna Salatiga');
   form.setDescription('Bismillahirrahmannirrahiim\n\nAssalamu’alaikum Warahmatullahi Wabarakatuh\n\nResponden yang terhormat,\nPerkenalkan saya mahasiswa yang sedang melakukan penelitian untuk skripsi. Mohon kesediaan teman-teman santri untuk mengisi kuesioner ini dengan jujur. Data yang diperoleh akan dijaga kerahasiaannya dan hanya digunakan untuk kepentingan penelitian.\n\nAtas bantuan dan partisipasinya, saya ucapkan terima kasih.\nWassalamu’alaikum Warahmatullahi Wabarakatuh.');
 
   // --- BAGIAN 1: IDENTITAS RESPONDEN ---
   form.addSectionHeaderItem().setTitle('Identitas Responden');
-  
+
   form.addTextItem().setTitle('Nama Lengkap').setRequired(true);
   form.addTextItem().setTitle('Usia (contoh : 20)').setRequired(true);
-  
+
   // Perbaikan: createChoice dipanggil dari item, bukan dari form
   var itemJK = form.addMultipleChoiceItem();
   itemJK.setTitle('Jenis Kelamin')
     .setChoices([
       itemJK.createChoice('Pria'),
-      itemJK.createChoice('Wanita')
+      itemJK.createChoice('Wanita'),
+      itemJK.createChoice('Waria')
     ]).setRequired(true);
-    
+
   form.addTextItem().setTitle('Fakultas - Program Studi (contoh : Dakwah - Manajemen Dakwah)').setRequired(true);
-  
+
   var itemSem = form.addMultipleChoiceItem();
   itemSem.setTitle('Semester Saat Ini')
     .setChoices([
@@ -29,7 +30,7 @@ function createFullCopyForm() {
       itemSem.createChoice('Semester 7 - Semester 8'),
       itemSem.createChoice('> Semester 9'),
       itemSem.createChoice('Cuti atau Tidak Kuliah')
-    ]).setRequired(true);
+    ]);
 
   form.addTextItem().setTitle('Asal Kota (cukup Tulis Kabupaten, contoh : Salatiga)').setRequired(true);
 
@@ -73,14 +74,15 @@ function createFullCopyForm() {
     .setHelpText('Pilihlah salah satu jawaban yang paling sesuai dengan keadaan Anda:\n1 = Sangat Tidak Setuju (STS)\n2 = Tidak Setuju (TS)\n3 = Netral (N)\n4 = Setuju (S)\n5 = Sangat Setuju (SS)');
 
   var likertOptions = [
-    "Sangat Tidak Setuju", 
-    "Tidak Setuju", 
-    "Netral", 
-    "Setuju", 
-    "Sangat Setuju"
+    "Sangat Tidak Setuju",
+    "Tidak Setuju",
+    "Netral",
+    "Setuju",
+    "Sangat Setuju",
+    "Biasa Aja"
   ];
 
-  var questions = [
+  var pertanyaan = [
     "Saya berusaha semaksimal mungkin untuk mencapai hasil maksimal dalam kegiatan pesantren",
     "Saya merasa bertanggung jawab sebagai santri",
     "Lingkungan dan teman di pesantren membuat saya lebih semangat dalam kegiatan",
@@ -95,13 +97,15 @@ function createFullCopyForm() {
     "Saya berusaha melaksanakan ibadah wajib secara konsisten",
     "Saya merasakan ketenangan batin ketika menjalankan ibadah",
     "Saya berusaha memahami ajaran agama yang diajarkan di pesantren",
-    "Nilai-nilai agama mempengaruhi perilaku saya dalam kehidupan sehari-hari"
+    "Nilai-nilai agama mempengaruhi perilaku saya dalam kehidupan sehari-hari",
+    "Halo",
+    "Cihuy"
   ];
 
-  for (var i = 0; i < questions.length; i++) {
+  for (var i = 0; i < pertanyaan.length; i++) {
     var itemLikert = form.addMultipleChoiceItem();
-    itemLikert.setTitle(questions[i])
-      .setChoices(likertOptions.map(function(opt) { return itemLikert.createChoice(opt); }))
+    itemLikert.setTitle(pertanyaan[i])
+      .setChoices(likertOptions.map(function (opt) { return itemLikert.createChoice(opt); }))
       .setRequired(true);
   }
 

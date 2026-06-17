@@ -58,24 +58,26 @@ Buka file `main.py` menggunakan text editor (Notepad++, VS Code, dll) dan sesuai
 LINK = 'https://docs.google.com/forms/d/e/PASTE_YOUR_LINK_HERE/viewform'
 ```
 
-Bot ini memiliki **2 Mode Pengisian**:
-1. **Mode Random (Acak)**: Mengisi form secara acak menggunakan data buatan yang realistis (sesuai daftar di dalam kode).
-2. **Mode File (CSV / Excel)**: Mengisi form menggunakan data responden asli dari file `.csv` atau `.xlsx` / `.xls` (Excel).
+Bot ini memiliki **3 Mode Pengoperasian**:
+1. **Mode Random (Acak)**: Mengisi form secara acak menggunakan data buatan yang realistis.
+2. **Mode File Lokal**: Mengisi form menggunakan data responden asli dari file `.csv` atau `.xlsx` lokal di komputer Anda.
+3. **Mode Scan Template**: Membuka Google Form dan memindai semua pertanyaan secara otomatis (melalui navigasi dummy tanpa melakukan submit), lalu menghasilkan file template kuesioner baru bernama `template_kuesioner.csv`.
 
-#### Cara Memilih Mode saat Menjalankan Bot:
-Anda dapat memilih mode pengisian dengan beberapa cara:
-- **Input Interaktif**: Cukup ketik `python main.py` di terminal. Bot akan memunculkan menu interaktif untuk memilih mode dan memasukkan nama file data Anda.
-- **Argumen Command Line**:
-  - Untuk langsung menjalankan Mode Random:
-    ```bash
-    python main.py --random
-    ```
-  - Untuk langsung menjalankan Mode File:
-    ```bash
-    python main.py data_dummy.xlsx
-    # atau
-    python main.py data_dummy.csv
-    ```
+#### Cara Menjalankan Bot:
+Cukup jalankan perintah berikut di terminal:
+```bash
+python main.py
+```
+Saat dijalankan secara interaktif, bot akan menanyakan:
+1. **Link Google Form Anda**: Masukkan URL Google Form target.
+2. **Pilihan Mode**: Pilih Mode 1 (Random), 2 (File Lokal), atau 3 (Scan Template).
+3. **Jumlah Responden (Khusus Mode 1)**: Masukkan jumlah responden yang ingin Anda generates (misal: `50`).
+   - *Catatan: Untuk Mode 2 (File Lokal), jumlah responden akan otomatis menyesuaikan dengan jumlah baris yang ada di dalam file data Anda.*
+
+Sebagai alternatif, Anda juga bisa langsung menjalankannya lewat argumen terminal:
+- **Jalankan Mode Random**: `python main.py --random`
+- **Jalankan Mode File Lokal**: `python main.py data_dummy.csv`
+- **Jalankan Mode Scan Template**: `python main.py --fetch-template`
 
 #### Format File CSV / Excel (Mode 2):
 File data Anda dapat memiliki kolom-kolom berikut (tidak wajib diisi semua):
