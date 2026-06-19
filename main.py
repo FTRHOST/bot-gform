@@ -106,6 +106,22 @@ def is_empty_value(val):
         return True
     return False
 
+def is_question_required(item):
+    try:
+        # Check if the question text or any label inside the item contains a red asterisk '*'
+        text = (item.text or "").strip()
+        if '*' in text:
+            return True
+            
+        # Check if any input/textarea element has the 'required' or 'aria-required="true"' attribute
+        inputs = item.find_elements(By.CSS_SELECTOR, 'input, textarea, [role="radiogroup"], [role="list"]')
+        for inp in inputs:
+            if inp.get_attribute("aria-required") == "true" or inp.get_attribute("required") is not None:
+                return True
+    except:
+        pass
+    return False
+
 def find_matching_choice_index(choices, target_value):
     import difflib
     
@@ -375,31 +391,24 @@ def fillForm(row_data=None):
         if row_data is not None:
             # Mode CSV/Excel
             name_val = get_value_from_row(row_data, "NAMA")
-            if is_empty_value(name_val):
-                raise ValueError("Kolom/data 'NAMA' tidak ditemukan atau kosong di file CSV/Excel!")
-            full_name = str(name_val).strip()
+            full_name = str(name_val).strip() if not is_empty_value(name_val) else "Responden Tanpa Nama"
             
             age_val = get_value_from_row(row_data, "USIA")
-            if is_empty_value(age_val):
-                raise ValueError("Kolom/data 'USIA' tidak ditemukan atau kosong di file CSV/Excel!")
-            age = str(age_val).strip()
+            age = str(age_val).strip() if not is_empty_value(age_val) else None
             
             city_val = get_value_from_row(row_data, "KOTA")
-            if is_empty_value(city_val):
-                raise ValueError("Kolom/data 'KOTA' tidak ditemukan atau kosong di file CSV/Excel!")
-            city = str(city_val).strip()
+            city = str(city_val).strip() if not is_empty_value(city_val) else None
             
             program_val = get_value_from_row(row_data, "FAKULTAS")
-            if is_empty_value(program_val):
-                raise ValueError("Kolom/data 'FAKULTAS' tidak ditemukan atau kosong di file CSV/Excel!")
-            program = str(program_val).strip()
+            program = str(program_val).strip() if not is_empty_value(program_val) else None
             
             gender_val = get_value_from_row(row_data, "JENIS KELAMIN")
-            if is_empty_value(gender_val):
-                raise ValueError("Kolom/data 'JENIS KELAMIN' tidak ditemukan atau kosong di file CSV/Excel!")
-            g_str = str(gender_val).strip().lower()
-            is_female = ("wanita" in g_str or "perempuan" in g_str or g_str.startswith("p") or g_str.startswith("f"))
-            gender_idx = 1 if is_female else 0
+            if not is_empty_value(gender_val):
+                g_str = str(gender_val).strip().lower()
+                is_female = ("wanita" in g_str or "perempuan" in g_str or g_str.startswith("p") or g_str.startswith("f"))
+                gender_idx = 1 if is_female else 0
+            else:
+                gender_idx = None
         else:
             # Mode Random
             full_name, is_female = generate_unique_name()
@@ -415,7 +424,7 @@ def fillForm(row_data=None):
             count += 1
             resp_id = count
         
-        logger.info(f"Resp {resp_id} - Memulai sesi: {full_name} ({city})")
+        logger.info(f"Resp {resp_id} - Memulai sesi: {full_name} ({city or 'Tanpa Kota'})")
         driver.get(LINK)
         
         current_page = 1
@@ -433,33 +442,40 @@ def fillForm(row_data=None):
                     choices = item.find_elements(By.CSS_SELECTOR, '[role="radio"]')
                     label = text.split('\n')[0]
                     
+                    is_required = is_question_required(item)
+                    
                     if inputs:
                         val = ""
                         source = "Acak"
                         if "NAMA" in text:
-                            val = full_name
+                            val = full_name if full_name != "Responden Tanpa Nama" else ""
                             source = "CSV" if row_data is not None else "Acak"
                         elif "USIA" in text:
-                            val = age
+                            val = age or ""
                             source = "CSV" if row_data is not None else "Acak"
                         elif "FAKULTAS" in text:
-                            val = program
+                            val = program or ""
                             source = "CSV" if row_data is not None else "Acak"
                         elif "KOTA" in text:
-                            val = city
+                            val = city or ""
                             source = "CSV" if row_data is not None else "Acak"
                         elif row_data is not None:
                             row_val = get_value_from_row(row_data, label)
-                            if is_empty_value(row_val):
-                                raise ValueError(f"Pertanyaan teks '{label}' kosong atau tidak ditemukan di CSV/Excel!")
-                            val = str(row_val).strip()
+                            if not is_empty_value(row_val):
+                                val = str(row_val).strip()
                             source = "CSV"
                         
-                        if val:
-                            inputs[0].clear()
-                            inputs[0].send_keys(val)
-                            logger.info(f"Resp {resp_id} - Mengisi teks '{label}' = '{val}' ({source})")
-                            time.sleep(random.uniform(0.5, 1.2))
+                        if not val:
+                            if is_required:
+                                raise ValueError(f"Pertanyaan wajib '{label}' kosong di file CSV/Excel!")
+                            else:
+                                logger.info(f"Resp {resp_id} - Melewati pertanyaan opsional '{label}' karena kosong di CSV/Excel.")
+                                continue
+                        
+                        inputs[0].clear()
+                        inputs[0].send_keys(val)
+                        logger.info(f"Resp {resp_id} - Mengisi teks '{label}' = '{val}' ({source})")
+                        time.sleep(random.uniform(0.5, 1.2))
                     
                     elif choices:
                         target_idx = -1
@@ -480,7 +496,11 @@ def fillForm(row_data=None):
                         if row_data is not None:
                             # Strict validation for CSV/Excel mode
                             if is_empty_value(row_val):
-                                raise ValueError(f"Data untuk pertanyaan pilihan '{label}' kosong atau tidak ditemukan di CSV/Excel!")
+                                if is_required:
+                                    raise ValueError(f"Data untuk pertanyaan pilihan wajib '{label}' kosong atau tidak ditemukan di CSV/Excel!")
+                                else:
+                                    logger.info(f"Resp {resp_id} - Melewati pertanyaan pilihan opsional '{label}' karena kosong di CSV/Excel.")
+                                    continue
                             
                             target_idx = find_matching_choice_index(choices, row_val)
                             if target_idx == -1:
